@@ -1,4 +1,4 @@
-from casidm.data_structs.pdg_pid_map import PdgPidMap1
+from casidm.data_structs.pdg_pid_map import PdgPidMap
 from casidm.propagation.tab_pproperties import TabulatedParticleProperties
 import numpy as np
 
@@ -18,7 +18,7 @@ class MceqGridCollector:
         """Initialization of the arrays related to
         particle id grid in mceq
         """
-        self.pdg2idx_mapper = PdgPidMap1(self.pdg_mceqidx_map)
+        self.pdg2idx_mapper = PdgPidMap(self.pdg_mceqidx_map)
         self.n_particles = self.mceq_run.pman.n_cparticles
             
     

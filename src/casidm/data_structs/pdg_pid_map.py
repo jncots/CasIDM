@@ -25,8 +25,9 @@ class PdgPidMap:
         else:
             total_map = False
             max_pdg_map = self.max_pdg
-        
-        pdg_pid = np.empty(len(self.pid_pdg_dict), dtype = np.int32)                   
+                
+        max_pid_in_dict = max([abs(pid) for pid in self.pid_pdg_dict.values()])          
+        pdg_pid = np.full(max_pid_in_dict + 1, self.none_value, dtype = np.int32)                 
         pid_pdg = np.full(2 * max_pdg_map + 1, self.none_value, dtype=np.int32)
         
         for pdg, pid in self.pid_pdg_dict.items():
