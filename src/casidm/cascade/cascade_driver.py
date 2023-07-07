@@ -2,14 +2,14 @@ import numpy as np
 
 
 from casidm.data_structs.particle_array import ParticleArray, FilterCode
-from casidm.data_structs.pdg_pid_map import PdgLists, PdgPidMap
+from casidm.data_structs.pdg_pid_map import PdgLists, PdgPidMap, unique_sorted_ids
 from casidm.data_structs.id_generator import IdGenerator
 
 from casidm.propagation.particle_xdepths import DefaultXdepthGetter
 
 from casidm.process.hadron_inter import HadronInteraction
 from casidm.process.decay_driver import DecayDriver
-from casidm.utils.utils import suppress_std_streams, unique_pdgs_np
+from casidm.utils.utils import suppress_std_streams
 
 from tqdm import tqdm
 import numpy as np
@@ -74,27 +74,27 @@ class CascadeDriver:
         self.mceq_mixed_pdgs = pdgs_categories["mixed"]["pdg_ids"]
         self.mceq_mixed_energy = pdgs_categories["mixed"]["etot_mix"]
         self.mceq_mixed_map = PdgPidMap({pdg: pid for pid, pdg in enumerate(self.mceq_mixed_pdgs)})
+
+        self.mceq_final_pdgs = unique_sorted_ids(pdgs_categories["final"])
+        self.mceq_only_interacting_pdgs = unique_sorted_ids(pdgs_categories["only_interacting"])
+        self.mceq_only_decaying_pdgs = unique_sorted_ids(pdgs_categories["only_decaying"])
+        self.mceq_resonance_pdgs = unique_sorted_ids(pdgs_categories["resonance"])
         
-        self.mceq_final_pdgs = unique_pdgs_np(pdgs_categories["final"])
-        self.mceq_only_interacting_pdgs = unique_pdgs_np(pdgs_categories["only_interacting"])
-        self.mceq_only_decaying_pdgs = unique_pdgs_np(pdgs_categories["only_decaying"])
-        self.mceq_resonance_pdgs = unique_pdgs_np(pdgs_categories["resonance"])
-        
-        self.unconditionally_final_pdgs = unique_pdgs_np(np.concatenate([self.mceq_final_pdgs,
+        self.unconditionally_final_pdgs = unique_sorted_ids(np.concatenate([self.mceq_final_pdgs,
                                                            self.mceq_only_decaying_pdgs]))
         
-        self.interacting_decaying_pdgs = unique_pdgs_np(np.concatenate([self.mceq_mixed_pdgs,
+        self.interacting_decaying_pdgs = unique_sorted_ids(np.concatenate([self.mceq_mixed_pdgs,
                                                                         self.mceq_only_interacting_pdgs]))
         
         
         # self.stable_pdgs = unique_pdgs_np(stable_pdgs)
         # self.decay_not_interact_pdgs = unique_pdgs_np(decay_not_interact_pdgs)
         # self.decay_when_final_pdgs = unique_pdgs_np(decay_when_final_pdgs)  
-        self.decay_at_vertex_pdgs = unique_pdgs_np([])
+        self.decay_at_vertex_pdgs = unique_sorted_ids([])
         
         is_final_pdgs = np.logical_not(np.isin(self.pdg_lists.mceq_particles, 
                                                                 self.mceq_resonance_pdgs))
-        self.final_pdgs = unique_pdgs_np(self.pdg_lists.mceq_particles[is_final_pdgs])
+        self.final_pdgs = unique_sorted_ids(self.pdg_lists.mceq_particles[is_final_pdgs])
         
         
         # self._check_for_duplicates()    

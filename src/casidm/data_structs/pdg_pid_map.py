@@ -1,10 +1,6 @@
 import numpy as np
 from particle import Particle
 
-def unique_pdg_list(pdgs):
-    res = list(set(pdgs))
-    res.sort(key=lambda x: (abs(x), x > 0))
-    return res
 
 class PdgPidMap:
     def __init__(self, pid_pdg_dict, max_pdg = 6000):
@@ -14,9 +10,11 @@ class PdgPidMap:
                          
     def _build_maps(self):
         
-        self.none_value = -2147483640
-        self.known_pdg_ids = np.array(unique_pdg_list(self.pid_pdg_dict.keys()))
-        self.known_pid_ids = np.array(unique_pdg_list(self.pid_pdg_dict.values()))
+        # Some unique number to check agains it
+        # + 13 - just to walk away from limit
+        self.none_value = np.iinfo(np.int32).min + 13
+        self.known_pdg_ids = unique_sorted_ids(self.pid_pdg_dict.keys())
+        self.known_pid_ids = unique_sorted_ids(self.pid_pdg_dict.values())
         
         max_pdg_in_dict = max([abs(pdg) for pdg in self.pid_pdg_dict])
         if  max_pdg_in_dict <= self.max_pdg:
@@ -183,4 +181,12 @@ class PdgLists:
                 self.longer_pi0_to_mceq[-pdg] = -3122
                 self.longer_pi0_to_mceq[pdg] = 3122
             
-            
+
+def unique_sorted_ids(ids):
+    """np.arrays of unique ids sorted by abs value
+    with negative value first, e.g.
+    -11, 11, -12, 12, ...
+    """
+    uids = np.unique(np.fromiter(ids, dtype=np.int32))
+    return uids[np.argsort(2*np.abs(uids) - (uids < 0))]
+         

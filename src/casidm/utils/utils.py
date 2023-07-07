@@ -37,14 +37,3 @@ class suppress_std_streams:
             os.dup2(self.saved_stderr, 2)
             os.close(self.null_stderr)
             
-            
-def unique_pdg_list(pdgs):
-    """Sorted array of unique pdgs"""
-    res = list(set(pdgs))
-    res.sort(key=lambda x: (abs(x), x > 0))
-    return res    
-
-
-def unique_pdgs_np(pdgs):
-    """Sorted numpy array of unique pdgs"""
-    return np.array(unique_pdg_list(pdgs), dtype = np.int32)
