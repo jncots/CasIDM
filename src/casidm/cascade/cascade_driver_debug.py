@@ -1,6 +1,6 @@
 import numpy as np
 
-
+from casidm.cascade.cascade_driver import CascadeDriver
 from casidm.data_structs.particle_array import ParticleArray, FilterCode
 from casidm.data_structs.pdg_pid_map import PdgLists, PdgPidMap, unique_sorted_ids
 from casidm.data_structs.id_generator import IdGenerator
@@ -25,7 +25,7 @@ class InteractionModel:
         
         
 
-class CascadeDriver:
+class CascadeDriverDebug(CascadeDriver):
     def __init__(self, imodel):
         self.imodel = imodel
         self.id_generator = IdGenerator()
@@ -99,6 +99,24 @@ class CascadeDriver:
         return self.mceq_mixed_energy[self.mceq_mixed_map.get_pids(pdg)]
             
         
+    # def _check_for_duplicates(self):
+    #     """Raise exception if any pdg id is more than in one
+    #     mutually exclusive arrays
+    #     """
+    #     all_pdgs = np.concatenate([self.stable_pdgs, 
+    #                    self.decay_not_interact_pdgs, 
+    #                    self.decay_when_final_pdgs,
+    #                    self.decay_at_vertex_pdgs])
+        
+    #     values, counts = np.unique(all_pdgs, return_counts=True)
+    #     duplicates = values[counts > 1]
+    #     if len(duplicates) > 0:
+    #         raise ValueError("Duplicates in mutually exclusive arrays for:\n"
+    #                           f"pdg_id={duplicates} are met\n"
+    #                           f"times={counts[counts > 1]}")
+        
+    
+    
     def simulation_parameters(self, *, pdg, energy, 
                               threshold_energy,
                               zenith_angle,
@@ -119,7 +137,7 @@ class CascadeDriver:
         
         self.stop_xdepth = self.xdepth_getter.xdepth_conversion.convert_h2x(stop_height * 1e5)
         self.xdepth_getter.set_stop_xdepth(self.stop_xdepth)
-        # print(f"stop depth = {self.stop_xdepth}")
+        print(f"stop depth = {self.stop_xdepth}")
         # print(f"Interacting pdgs = {self.interacting_pdgs}"
         #       f"Number = {len(self.interacting_pdgs)}")
         
@@ -134,6 +152,7 @@ class CascadeDriver:
         with suppress_std_streams(suppress_stderr=False):
             for _ in tqdm(range(nshowers), total = nshowers):
                 self.run_once()
+    
     
     def run_once(self):
         
@@ -172,18 +191,29 @@ class CascadeDriver:
             #       f" number of decays = {self.number_of_decays}")
             
             # print(f"{iloop} Working stack = {len(self.working_stack)}")
+            # self.catch_charged_pions(1)
             self.filter_uncond_final()
+            # self.catch_charged_pions(2)
             self.filter_by_threshold_energy()
+            # self.catch_charged_pions(3)
             self.handle_below_threshold()
+            # self.catch_charged_pions(4)
             self.handle_above_threshold()
-            self.filter_by_slant_depth()       
+            # self.catch_charged_pions(5)
+            self.filter_by_slant_depth2()
+            # self.catch_charged_pions(6)
+            # self.filter_out_final()
+            # self.filter_by_slant_depth1()         
             self.run_hadron_interactions()
+            # self.catch_charged_pions(7)
             if len(self.working_stack) == 0:
                 self.run_particle_decay()
+                # self.catch_charged_pions(8)
             
             iloop += 1
         
         self.run_final_forced_decay()
+        # self.catch_charged_pions(9)
         
         self.loop_execution_time += time.time() - start_time
         self.runs_number += 1
@@ -237,6 +267,9 @@ class CascadeDriver:
         is_inter = np.isin(wstack.pid, self.mceq_only_interacting_pdgs)
         self.final_stack.append(wstack[is_inter])
         
+        self.test_intersecting_sets([is_not_mceq, is_resonance, is_mixed_inter, is_mixed_not_inter, is_inter],
+                                    wstack)
+        
     
     def handle_above_threshold(self):
         wstack = self.above_threshold_stack.valid()
@@ -261,7 +294,41 @@ class CascadeDriver:
         self.propagating_stack.clear()
         self.propagating_stack.append(wstack[is_mixed_inter])
         is_inter = np.isin(wstack.pid, self.mceq_only_interacting_pdgs)
-        self.propagating_stack.append(wstack[is_inter])        
+        self.propagating_stack.append(wstack[is_inter])
+        
+         
+        self.test_intersecting_sets([is_not_mceq, is_resonance, is_mixed_inter, is_mixed_not_inter, is_inter],
+                                    wstack)
+        
+    def test_intersecting_sets(self, bool_arrays, wstack):
+        res = None
+        
+        for arr in bool_arrays:
+            if res is None:
+                res = arr.astype(int)
+            else:
+                res += arr.astype(int)
+         
+        if np.any(res != 1):
+            print(f"Intersection of arrays = {res[res != 1]}")
+            print(f"Pid = {wstack.pid[res != 1]}")
+            print(f"Energy = {wstack.energy[res != 1]}")               
+    
+    
+    def catch_charged_pions(self, place):
+        if self.cought_pions is None:
+                self.cought_pions = 0
+        
+        wstack = self.final_stack.valid()  
+        
+        charged_pions = np.isin(wstack.pid, np.array([111]))
+        
+        below_mixed = np.where(wstack.energy[charged_pions] <= self.get_mix_energy(wstack.pid[charged_pions]))[0]
+        
+        if len(below_mixed) != self.cought_pions:
+            print(f"{place} Charged pions below mixed en = {len(below_mixed)}")
+            self.cought_pions = len(below_mixed)
+            
     
     def filter_out_final(self):
         
@@ -328,7 +395,7 @@ class CascadeDriver:
         self.working_stack.clear()
     
     
-    def filter_by_slant_depth(self):
+    def filter_by_slant_depth2(self):
         
         if len(self.propagating_stack) == 0:
             self.inter_stack = None
@@ -382,10 +449,135 @@ class CascadeDriver:
         
         self.working_stack.clear()
     
+    def filter_by_slant_depth1(self):
+        if len(self.propagating_stack) == 0:
+            self.inter_stack = None
+            return
+        
+        pstack = self.propagating_stack.valid()
+        
+        is_mixed = np.isin(pstack.pid, self.mceq_mixed_pdgs)
+        is_inter0 = np.isin(pstack.pid, self.mceq_only_interacting_pdgs)
+        
+        is_mixed_inter = np.full_like(is_mixed, False)
+        is_mixed_inter[is_mixed] = pstack.energy[is_mixed] > self.get_mix_energy(pstack.pid[is_mixed])
+        
+        is_inter = np.logical_or(is_mixed_inter, is_inter0)
+        inter_stack = pstack[is_inter]
+        self.decay_stack.append(pstack[np.logical_not(is_inter)])
+        
+        self.xdepth_getter.get_decay_xdepth(inter_stack)
+        self.xdepth_getter.get_inter_xdepth(inter_stack)
+        
+        max_xdepth = self.stop_xdepth
+                
+        # Sort particles at the surface
+        at_surface = np.logical_and(inter_stack.xdepth_inter >= max_xdepth, 
+                                    inter_stack.xdepth_decay >= max_xdepth)
+        
+        not_at_surface = np.logical_not(at_surface)
+        
+        should_not_decay = np.isin(inter_stack.pid, self.pdg_lists.mceq_particles)
+        should_decay = np.logical_not(should_not_decay)
+        
+        should_decay = np.where(np.logical_and(at_surface, should_decay))[0]
+        should_not_decay = np.where(np.logical_and(at_surface, should_not_decay))[0]
+        
+        # Particles that should be decayed at surface
+        dfstack_portion = inter_stack[should_decay]
+        dfstack_portion.xdepth_stop[:] = max_xdepth
+        dfstack_portion.final_code[:] = 1
+        self.final_decay_stack.append(dfstack_portion)
+        
+        # Particles that are already at their final stage
+        fstack_portion = inter_stack[should_not_decay]
+        fstack_portion.xdepth_stop[:] = max_xdepth
+        fstack_portion.final_code[:] = 1
+        self.final_stack.append(fstack_portion)
+        
+        # Sort particles which are still in the atmosphere
+        istack_true = np.logical_and(inter_stack.xdepth_inter < inter_stack.xdepth_decay, not_at_surface)
+        istack_true = np.where(istack_true)[0]
+        istack_portion = inter_stack[istack_true]        
+        istack_portion.xdepth_stop[:] = istack_portion.xdepth_inter
+        self.inter_stack = istack_portion
+        
+        dstack_true = np.logical_and(inter_stack.xdepth_inter > inter_stack.xdepth_decay, not_at_surface)
+        dstack_true = np.where(dstack_true)[0]
+        dstack_portion = inter_stack[dstack_true]
+        dstack_portion.xdepth_stop[:] = dstack_portion.xdepth_decay
+        self.decay_stack.append(dstack_portion)
+        
+        self.working_stack.clear()
+        
+         
+    
+    
+    def filter_by_slant_depth(self):
+        
+        if len(self.propagating_stack) == 0:
+            self.inter_stack = None
+            return
+        
+        pstack = self.propagating_stack.valid()    
+        
+        self.xdepth_getter.get_decay_xdepth(pstack)
+        self.xdepth_getter.get_inter_xdepth(pstack)
+        
+        max_xdepth = self.stop_xdepth
+                
+        # Sort particles at the surface
+        at_surface = np.logical_and(pstack.xdepth_inter >= max_xdepth, 
+                                    pstack.xdepth_decay >= max_xdepth)
+        
+        not_at_surface = np.logical_not(at_surface)
+        
+        
+        should_not_decay = np.isin(pstack.pid, self.pdg_lists.mceq_particles)
+        should_decay = np.logical_not(should_not_decay)
+        
+        should_decay = np.where(np.logical_and(at_surface, should_decay))[0]
+        should_not_decay = np.where(np.logical_and(at_surface, should_not_decay))[0]
+        
+        
+        # Particles that should be decayed at surface
+        dfstack_portion = pstack[should_decay]
+        dfstack_portion.xdepth_stop[:] = max_xdepth
+        dfstack_portion.final_code[:] = 1
+        self.final_decay_stack.append(dfstack_portion)
+        
+        # Particles that are already at their final stage
+        fstack_portion = pstack[should_not_decay]
+        fstack_portion.xdepth_stop[:] = max_xdepth
+        fstack_portion.final_code[:] = 1
+        self.final_stack.append(fstack_portion)
 
+        # Sort particles which are still in the atmosphere
+        istack_true = np.logical_and(pstack.xdepth_inter < pstack.xdepth_decay, not_at_surface)
+        istack_true = np.where(istack_true)[0]
+        istack_portion = pstack[istack_true]        
+        istack_portion.xdepth_stop[:] = istack_portion.xdepth_inter
+        self.inter_stack = istack_portion
+        
+        dstack_true = np.logical_and(pstack.xdepth_inter > pstack.xdepth_decay, not_at_surface)
+        dstack_true = np.where(dstack_true)[0]
+        dstack_portion = pstack[dstack_true]
+        dstack_portion.xdepth_stop[:] = dstack_portion.xdepth_decay
+        self.decay_stack.append(dstack_portion)
+        
+        self.working_stack.clear()
+
+        
+        
+        
+    
     def run_hadron_interactions(self):
         self.children_stack.clear()
         self.rejection_stack.clear()
+        
+        # print(f"Interaction stack:\npid = {self.inter_stack.valid().pid}")
+        # print(f"id = {self.inter_stack.valid().id}")
+        # input()
         
         if (self.inter_stack is None) or (len(self.inter_stack) == 0):
             return
@@ -394,7 +586,13 @@ class CascadeDriver:
                                                     parents = self.inter_stack, 
                                                     children = self.children_stack, 
                                                     failed_parents = self.rejection_stack)
-                
+        
+        # Take only MCEq particles
+        # valid_children = self.children_stack.valid()
+        # is_mceq_particles = np.isin(valid_children.pid, self.pdg_lists.mceq_particles)
+        # self.children_stack.clear()
+        # self.children_stack.append(valid_children[is_mceq_particles])
+        
         self.id_generator.generate_ids(self.children_stack.valid().id)
         chstack = self.children_stack.valid()
         chstack.production_code[:] = 2
@@ -424,7 +622,29 @@ class CascadeDriver:
         if len(self.rejection_stack) > 0:
             rstack = self.rejection_stack.valid()
             self.archival_stack.append(rstack)
+            
+            # is_stable_lepton = np.isin(rstack.pid, self.pdg_lists.leptons_stable_mceq)
+            # is_decaying_lepton = np.isin(rstack.pid, self.pdg_lists.leptons_decay_mceq)
+            # is_mixing_hadron = np.isin(rstack.pid, self.pdg_lists.hadrons_mix_mceq)
+            # is_stable_hadron = np.isin(rstack.pid, self.pdg_lists.hadrons_stable_mceq)
+        
+        
+            # self.final_stack.append(rstack[is_stable_lepton])
+            # self.final_stack.append(rstack[is_mixing_hadron])
+            # self.final_stack.append(rstack[is_stable_hadron])
+            # self.decay_stack.append(rstack[is_decaying_lepton])
+            
+            
             self.decay_stack.append(rstack)
+            
+            rej_muons = np.where(np.isin(self.rejection_stack.valid().pid, 
+                                         np.array([-13, 13], dtype = np.int32)))[0]
+            if len(rej_muons) > 0:
+                print(f"Muons pdgs = {self.rejection_stack.pid[rej_muons]}"
+                      f" energy = {self.rejection_stack.energy[rej_muons]}"
+                      f" xdepth = {self.rejection_stack.xdepth[rej_muons]}"
+                      f" xdepth_decay = {self.rejection_stack.xdepth_decay[rej_muons]}"
+                      f" xdepth_inter = {self.rejection_stack.xdepth_inter[rej_muons]}")
         
 
     
