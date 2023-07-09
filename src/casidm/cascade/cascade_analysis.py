@@ -205,31 +205,41 @@ class CascadeAnalysis:
         self.egrid = energy_grid_centers
         self.xgrid = xdepth_grid_centers
         self.hist_dict = hist_dict   
-            
-        
-    def plot_ptypes_dist(self, from_=None, to_=None):
-
-        pid_dist = dict()
-
-        for pid in self.final_particles.pid:
-            pid_dist[pid] = pid_dist.get(pid, 0) + 1
-
-        pid_dist = dict(
-            sorted(pid_dist.items(), key=lambda item: item[1], reverse=True)
-        )
-        print(pid_dist)
-        
-        mceq_particles = PdgLists().mceq_particles
-        for pdg in pid_dist.keys():
-            if pdg not in mceq_particles:
-                print(f"pdg = {pdg} is not among mceq_particles")
                 
-
-        ptypes = [self.all_pdgs[i] for i in pid_dist.keys()]
-        pnum = list(pid_dist.values())
-        plt.bar(ptypes[from_:to_], pnum[from_:to_])
-        plt.title("Particle type distribution")
+    
+    def _find_not_mceq(self, unique_pids, counts_pids):
+        not_mceq = np.logical_not(np.isin(unique_pids, PdgLists().mceq_particles))
+        if np.any(not_mceq):
+            not_mceq_pids = unique_pids[not_mceq]
+            not_mceq_counts = counts_pids[not_mceq]
+            sorted_ = np.argsort(not_mceq_counts)[::-1]
+            print(f"Not mceq particles = {not_mceq_pids[sorted_]}\n"
+                  f"counts = {not_mceq_counts[sorted_]}")
+    
+    def _print_ptypes(self, unique_pids, counts_pids, per_run):
+        sorted_counts = np.argsort(counts_pids)[::-1]
+        if per_run:
+            counts_pids = counts_pids / self.cascade_driver.runs_number        
+        for i, icount in enumerate(sorted_counts):
+            br_end = "\n" if i % 4 == 0 and i != 0 else " "
+            print(f"{unique_pids[icount]}:{counts_pids[icount]:.3g},", end=br_end)
+           
+    
+    def plot_ptypes_dist(self, from_=None, to_=None, per_run = False): 
+        unique_pids, counts_pids = np.unique(self.final_particles.pid, return_counts=True)        
+        display_slice = np.argsort(counts_pids)[::-1][from_: to_]
+        ptypes = [self.all_pdgs[i] for i in unique_pids[display_slice]]
         
+        if per_run:
+            pcounts = counts_pids[display_slice]/self.cascade_driver.runs_number
+        else:
+            pcounts = counts_pids[display_slice]    
+            
+        plt.bar(ptypes, pcounts)        
+        plt.title("Particle type distribution") 
+        
+        self._print_ptypes(unique_pids, counts_pids, per_run)
+        self._find_not_mceq(unique_pids, counts_pids)  
         
     def plot_ptypes_energy_dist(self, from_=None, to_=None):
 

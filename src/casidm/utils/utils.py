@@ -1,5 +1,4 @@
 import os
-import numpy as np
 
 class suppress_std_streams:
     """Set stdout and stderr to devnull
