@@ -74,24 +74,15 @@ class CascadeDriver:
         
         self.interacting_decaying_pdgs = unique_sorted_ids(np.concatenate([self.mceq_mixed_pdgs,
                                                                         self.mceq_only_interacting_pdgs]))
-        
-        
-        # self.stable_pdgs = unique_pdgs_np(stable_pdgs)
-        # self.decay_not_interact_pdgs = unique_pdgs_np(decay_not_interact_pdgs)
-        # self.decay_when_final_pdgs = unique_pdgs_np(decay_when_final_pdgs)  
-        # self.decay_at_vertex_pdgs = unique_sorted_ids([])
-        
+                
         is_final_pdgs = np.logical_not(np.isin(self.pdg_lists.mceq_particles, 
                                                                 self.mceq_resonance_pdgs))
         self.final_pdgs = unique_sorted_ids(self.pdg_lists.mceq_particles[is_final_pdgs])
         
-        
-        # self._check_for_duplicates()    
+         
         # By default all particles that can physically decay will decay in pythia
         # pdgs in stable_pdgs will not be decayed in pythia
-        self.decay_driver.set_decaying_pdgs(decaying_pdgs=self.phys_decaying_pdgs,
-                                            # stable_pdgs=self.stable_pdgs
-                                            )  
+        self.decay_driver.set_decaying_pdgs(decaying_pdgs=self.phys_decaying_pdgs)  
         
     
     def get_mix_energy(self, pdg):
@@ -186,6 +177,10 @@ class CascadeDriver:
         self.runs_number += 1
     
     
+    def set_decay_at_place(self, wstack):
+        wstack.xdepth_decay[:] = wstack.xdepth
+        wstack.filter_code[:] = FilterCode.XD_DECAY_ON.value
+        return wstack
     
     def filter_uncond_final(self):
         wstack = self.working_stack.valid()
@@ -223,10 +218,10 @@ class CascadeDriver:
         is_mixed_not_inter[is_mixed] = np.logical_not(is_mixed_inter[is_mixed])
         
         self.final_stack.append(wstack[is_mixed_inter])
-        self.final_decay_stack.append(wstack[is_mixed_not_inter])
+        self.final_decay_stack.append(self.set_decay_at_place(wstack[is_mixed_not_inter]))
         
         is_resonance = np.isin(wstack.pid, self.mceq_resonance_pdgs)
-        self.final_decay_stack.append(wstack[is_resonance])
+        self.final_decay_stack.append(self.set_decay_at_place(wstack[is_resonance]))
         
         is_inter = np.isin(wstack.pid, self.mceq_only_interacting_pdgs)
         self.final_stack.append(wstack[is_inter])
@@ -241,7 +236,7 @@ class CascadeDriver:
         self.decay_stack.append(wstack[is_not_mceq])
         
         is_resonance = np.isin(wstack.pid, self.mceq_resonance_pdgs)
-        self.decay_stack.append(wstack[is_resonance])
+        self.decay_stack.append(self.set_decay_at_place(wstack[is_resonance]))
         
         
         is_mixed = np.isin(wstack.pid, self.mceq_mixed_pdgs)
@@ -250,7 +245,7 @@ class CascadeDriver:
         is_mixed_inter[is_mixed] = wstack.energy[is_mixed] > self.get_mix_energy(wstack.pid[is_mixed])
         is_mixed_not_inter[is_mixed] = np.logical_not(is_mixed_inter[is_mixed])
         
-        self.decay_stack.append(wstack[is_mixed_not_inter])
+        self.decay_stack.append(self.set_decay_at_place(wstack[is_mixed_not_inter]))
         
         self.propagating_stack.clear()
         self.propagating_stack.append(wstack[is_mixed_inter])
@@ -314,9 +309,9 @@ class CascadeDriver:
     def run_hadron_interactions(self):
         self.children_stack.clear()
         self.rejection_stack.clear()
+        self.working_stack.clear()
         
         if (self.inter_stack is None) or (len(self.inter_stack) == 0):
-            self.working_stack.clear()
             return
         
         self.number_of_interactions += self.hadron_interaction.run_event_generator(
@@ -335,8 +330,6 @@ class CascadeDriver:
         parents.valid().final_code[:] = 2
         # And record them in archival stack
         self.archival_stack.append(parents)
-        
-        self.working_stack.clear()
         self.working_stack.append(chstack)
                 
         
@@ -368,18 +361,7 @@ class CascadeDriver:
         self.id_generator.generate_ids(self.working_stack.valid().id)
     
         self.rejection_stack.valid().xdepth_stop[:] = self.stop_xdepth
-        self.final_stack.append(self.rejection_stack) 
-        
-        # Use rejection_stack again
-        # self.rejection_stack.clear()
-        # should_be_finals = np.isin(self.working_stack.valid().final_code, np.array([1, 4], dtype=np.int32))
-        # should_be_processed = np.logical_not(should_be_finals)
-        # self.final_stack.append(self.working_stack[np.where(should_be_finals)[0]])
-        # self.rejection_stack.append(self.working_stack[np.where(should_be_processed)[0]])
-        
-        # self.working_stack.clear()
-        # self.working_stack.append(self.rejection_stack)  
-        
+        self.final_stack.append(self.rejection_stack)         
         self.decay_stack.clear()
         
         
@@ -392,10 +374,10 @@ class CascadeDriver:
                                                                 stable_particles=self.rejection_stack)
         
         
+            self.final_decay_stack.clear()
             wstack = self.working_stack.valid()
             self.id_generator.generate_ids(wstack.id)
             
-            self.final_decay_stack.clear()
             is_mixed = np.isin(wstack.pid, self.mceq_mixed_pdgs)
             is_mixed_inter = np.full_like(is_mixed, False)
             is_mixed_not_inter = np.full_like(is_mixed, False)
@@ -403,13 +385,13 @@ class CascadeDriver:
             is_mixed_not_inter[is_mixed] = np.logical_not(is_mixed_inter[is_mixed])
             
             self.final_stack.append(wstack[is_mixed_inter])
-            self.final_decay_stack.append(wstack[is_mixed_not_inter])
+            self.final_decay_stack.append(self.set_decay_at_place(wstack[is_mixed_not_inter]))
             
             is_inter = np.isin(wstack.pid, self.mceq_only_interacting_pdgs)
             self.final_stack.append(wstack[is_inter])
             
             is_resonance = np.isin(wstack.pid, self.mceq_resonance_pdgs)
-            self.final_decay_stack.append(wstack[is_resonance])
+            self.final_decay_stack.append(self.set_decay_at_place(wstack[is_resonance]))
             
             is_uncond_final = np.isin(wstack.pid, self.unconditionally_final_pdgs)
             self.final_stack.append(wstack[is_uncond_final])
