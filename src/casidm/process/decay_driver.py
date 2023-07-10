@@ -126,7 +126,7 @@ class DecayDriver:
 
             
         
-    def run_decay(self, pstack, decayed_particles, stable_particles):
+    def run_decay(self, pstack, decay_products, decayed_particles, stable_particles):
         """Run decay of particle in pstack
                 
         FilterCode.XD_DECAY_OFF.value for `filter_code` should be set for particles 
@@ -157,46 +157,36 @@ class DecayDriver:
 
         # Decay it
         self._pythia.forceHadronLevel()
-        
-        # number_of_decays = len(np.where(self._pythia.event.status() == 2)[0])
-        # Process event from Pythia
-        decay_stack = ParticleArray()
-        decay_stack.push(pid = self._pythia.event.pid(),
-                       energy = self._pythia.event.en())
-        
+                
         # Set 0th generation
+        decay_stack = ParticleArray(self._pythia.event.size)
         gen0_slice = slice(0, len(pstack))
-        dsv = decay_stack.valid()
-        dsv.id[gen0_slice] = pstack.valid().id
-        dsv.parent_id[gen0_slice] = pstack.valid().parent_id
-        dsv.xdepth[gen0_slice] = pstack.valid().xdepth
-        dsv.xdepth_stop[gen0_slice] = pstack.valid().xdepth_stop
-        dsv.xdepth_decay[gen0_slice] = pstack.valid().xdepth_decay
-        dsv.generation_num[gen0_slice] = pstack.valid().generation_num
-        dsv.filter_code[gen0_slice] = pstack.valid().filter_code
-        dsv.final_code[gen0_slice] = pstack.valid().final_code
+        decay_stack[gen0_slice] = pstack.valid()
+        
+        # Get pid and energy from Pythia
+        decay_stack.pid = self._pythia.event.pid()
+        decay_stack.energy = self._pythia.event.en()        
         
         # Get parents array and fill in rest generations
-        parents = self._pythia.event.parents()[:,0]
-        
-        # print(f"Parents = {self._pythia.event.parents()[:,0]}") 
-        # print(f"Status = {self._pythia.event.status()}")  
-        # print(f"PDG = {self._pythia.event.pid()}")
-        # print(f"Energy = {self._pythia.event.en()}")
-             
+        parents = self._pythia.event.parents()[:,0]          
         first_generation_slice = self._fill_xdepth_for_decay_chain(decay_stack, parents, len(pstack))
-        # Filter final particles
-        fin_status = self._pythia.event.status() == 1
-        decayed_slice = fin_status[gen0_slice]
-        # final_slice = fin_status[len(pstack):]
-        dec_status = self._pythia.event.status() == 2
-        number_of_decays = len(np.where(dec_status[gen0_slice])[0])
         
-        # decayed_particles = decay_stack[first_generation_slice]
-        # stable_particles = decay_stack[np.where(decayed_slice)]
+        # Decay products
+        decay_products.clear()        
+        decay_products.append(decay_stack[first_generation_slice])
         
-        decayed_particles.append(decay_stack[first_generation_slice])
-        stable_particles.append(decay_stack[np.where(decayed_slice)])
+        # Not decayed initial particles
+        final_status = self._pythia.event.status() == 1
+        is_stable = np.where(final_status[gen0_slice])[0]
+        stable_particles.clear()
+        stable_particles.append(decay_stack[is_stable])
+        
+        # Decayed initial particles
+        decayed_status = self._pythia.event.status() == 2
+        is_decayed = np.where(decayed_status[gen0_slice])[0]
+        decayed_particles.clear()
+        decayed_particles.append(decay_stack[is_decayed])
+        number_of_decays = len(is_decayed)
         
         return number_of_decays
         
@@ -204,8 +194,8 @@ class DecayDriver:
 if __name__ == "__main__":
     
     # Example:
-    from particle_xdepths import DefaultXdepthGetter
-    from particle_array import ParticleArray, FilterCode
+    from casidm.propagation.particle_xdepths import DefaultXdepthGetter
+    from casidm.data_structs.particle_array import ParticleArray, FilterCode
     import numpy as np
     
     # Set array of particles to decay
@@ -223,18 +213,21 @@ if __name__ == "__main__":
                             # decaying_pdgs=[111, -211, 211, -13, 13],
                             )
     
-    final_particles = ParticleArray()
+    decay_products = ParticleArray()
+    decayed_particles = ParticleArray()
     stable_particles = ParticleArray()
-    number_of_decays = decay_driver.run_decay(pstack, final_particles=final_particles, 
+    number_of_decays = decay_driver.run_decay(pstack, decay_products=decay_products,
+                                              decayed_particles=decayed_particles,
                                               stable_particles=stable_particles)
-    fstack = final_particles.valid()
+    fstack = decay_products.valid()
     print("pid = ", fstack.pid)
     print("energy = ", fstack.energy)
     print("xdepth_decay = ", fstack.xdepth_decay)
     print("xdepth = ", fstack.xdepth)
     print("gen_num = ", fstack.generation_num)
-    print("number of finals = ", len(fstack))
+    print("number of products = ", len(fstack))
     print("number of decays = ", number_of_decays)
+    print("pid_decayed = ", decayed_particles.valid().pid)
     print("pid_stable = ", stable_particles.valid().pid)
     
        
