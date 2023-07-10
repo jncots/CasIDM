@@ -188,8 +188,7 @@ class CascadeDriver:
         is_not_uncond_final = np.logical_not(is_uncond_final)
         self.final_stack.append(wstack[is_uncond_final])
         
-        self.spare_working_stack.clear()
-        self.spare_working_stack.append(wstack[is_not_uncond_final])
+        self.spare_working_stack.refill(wstack[is_not_uncond_final])
     
     def filter_by_threshold_energy(self):
         wstack = self.spare_working_stack.valid()
@@ -197,11 +196,8 @@ class CascadeDriver:
         is_above_threshold = wstack.energy > self.threshold_energy
         is_below_threshold = np.logical_not(is_above_threshold)
         
-        self.above_threshold_stack.clear()
-        self.above_threshold_stack.append(wstack[is_above_threshold])
-        
-        self.below_threshold_stack.clear()
-        self.below_threshold_stack.append(wstack[is_below_threshold])
+        self.above_threshold_stack.refill(wstack[is_above_threshold])
+        self.below_threshold_stack.refill(wstack[is_below_threshold])
         
     def handle_below_threshold(self):
         wstack = self.below_threshold_stack.valid()   
@@ -247,8 +243,7 @@ class CascadeDriver:
         
         self.decay_stack.append(self.set_decay_at_place(wstack[is_mixed_not_inter]))
         
-        self.propagating_stack.clear()
-        self.propagating_stack.append(wstack[is_mixed_inter])
+        self.propagating_stack.refill(wstack[is_mixed_inter])
         is_inter = np.isin(wstack.pid, self.mceq_only_interacting_pdgs)
         self.propagating_stack.append(wstack[is_inter])        
     
@@ -307,11 +302,9 @@ class CascadeDriver:
     
 
     def run_hadron_interactions(self):
-        self.children_stack.clear()
-        self.rejection_stack.clear()
-        self.working_stack.clear()
-        
+                
         if (self.inter_stack is None) or (len(self.inter_stack) == 0):
+            self.working_stack.clear()
             return
         
         self.number_of_interactions += self.hadron_interaction.run_event_generator(
@@ -330,7 +323,7 @@ class CascadeDriver:
         parents.valid().final_code[:] = 2
         # And record them in archival stack
         self.archival_stack.append(parents)
-        self.working_stack.append(chstack)
+        self.working_stack.refill(chstack)
                 
         
         if len(self.rejection_stack) > 0:

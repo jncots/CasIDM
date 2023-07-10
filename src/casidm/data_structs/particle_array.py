@@ -28,7 +28,6 @@ class ParticleArray:
                        "production_code",
                        "final_code",
                        "filter_code",
-                       "valid_code",
                        "id",
                        "parent_id"]
 
@@ -55,7 +54,6 @@ class ParticleArray:
         self.production_code = np.empty(size, dtype=self._int_type)
         self.final_code = np.empty(size, dtype=self._int_type)
         self.filter_code = np.empty(size, dtype=self._int_type)
-        self.valid_code = np.zeros(size, dtype=self._int_type)
         self.id = np.zeros(size, dtype=np.int64)
         self.parent_id = np.zeros(size, dtype=np.int64)
         self.data = self
@@ -149,7 +147,6 @@ class ParticleArray:
                 else:
                     data_attr[dst_slice] = value[src_slice]
         self._len = dst_end
-        self.valid_code[dst_slice] = 1
         return dst_slice
     
     def push_one(self, **kwargs):
@@ -168,7 +165,6 @@ class ParticleArray:
             if data_attr is not None:
                 data_attr[dst_slice] = np.copy(value)
         self._len = dst_end
-        self.valid_code[dst_slice] = 1
         return dst_slice
 
 
@@ -190,7 +186,6 @@ class ParticleArray:
             src_value = getattr(self, attr)[src_slice]
             getattr(copy_stack, attr)[dst_slice] = np.copy(src_value)
         
-        copy_stack.valid_code[dst_slice] = np.copy(self.valid_code[src_slice])
         return copy_stack
 
     def clear(self, size=None):
@@ -213,18 +208,21 @@ class ParticleArray:
         return popped_stack
     
     def append(self, other):
-        """Appends only valid part of other array
+        """
+        Appends only valid part of other array
         """
         
         if not isinstance(other, ParticleArray):
             raise ValueError("argument is not a ParticleArray object")
         
-        if len(other) == 0:
+        len_other = len(other)
+        if len_other == 0:
             return self
         
-        other_slice =  slice(0, len(other))
-        new_len = len(self) + len(other)
-        self_slice = slice(len(self), new_len)
+        other_slice =  slice(0, len_other)
+        len_self = len(self)
+        new_len = len_self + len_other
+        self_slice = slice(len_self, new_len)
         
         self._adjust_capacity(new_len)
 
@@ -235,6 +233,10 @@ class ParticleArray:
             
         self._len = new_len
         return self    
+     
+    def refill(self, other):
+        self._len = 0
+        self.append(other)
             
     def valid(self):
         return self[0:self._len]  
@@ -262,7 +264,6 @@ if __name__ == "__main__":
         print(pstack1.valid().pid)
         print(pstack1.valid().energy)
         print(pstack1.valid().xdepth)
-        print(pstack1.valid().valid_code)
         
     
     

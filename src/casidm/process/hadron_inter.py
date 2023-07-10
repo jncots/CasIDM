@@ -16,6 +16,7 @@ class HadronInteraction:
     
     def run_event_generator(self, parents, children, failed_parents):
         
+        children.clear()
         number_of_interactions = 0
         pvalid = parents.valid()
         pvalid.production_code[:] = 0
@@ -62,7 +63,7 @@ class HadronInteraction:
                             parent_id = pvalid.id[i],
                             production_code = 777)
             
-        failed_parents.append(pvalid[np.where(pvalid.production_code > 0)])
+        failed_parents.refill(pvalid[np.where(pvalid.production_code > 0)])
         
         return number_of_interactions
         
@@ -90,13 +91,11 @@ if __name__ == "__main__":
     print("energy = ", ch.energy)
     print("xdepth = ", ch.xdepth)
     print("generation = ", ch.generation_num)
-    print("valid_code = ", ch.valid_code)
     print(len(ch))
     
     print("failed pid = ", fp.pid)
     print("failed energy = ", fp.energy)
     print("failed xdepth = ", fp.xdepth)
     print("failed generation = ", fp.generation_num)
-    print("failed valid_code = ", fp.production_code)
     print(len(fp))
     

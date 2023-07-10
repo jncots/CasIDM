@@ -92,11 +92,12 @@ class DecayDriver:
         # print(f"GEN_SLICE = {generation_slice}")
         # generation_slice contains elements for current generation (starting with 1st generation)
         # parent_indices[generation_slice] are corresponding indicies of parents
-        pstack.xdepth[generation_slice] = pstack.xdepth_decay[parent_indices[generation_slice]]
-        pstack.xdepth_stop[generation_slice] = pstack.xdepth_stop[parent_indices[generation_slice]]          
-        pstack.generation_num[generation_slice] = pstack.generation_num[parent_indices[generation_slice]] + 1
-        pstack.parent_id[generation_slice] = pstack.id[parent_indices[generation_slice]]
-        pstack.final_code[generation_slice] = pstack.final_code[parent_indices[generation_slice]]
+        par_ind = parent_indices[generation_slice]
+        pstack.xdepth[generation_slice] = pstack.xdepth_decay[par_ind]
+        pstack.xdepth_stop[generation_slice] = pstack.xdepth_stop[par_ind]          
+        pstack.generation_num[generation_slice] = pstack.generation_num[par_ind] + 1
+        pstack.parent_id[generation_slice] = pstack.id[par_ind]
+        pstack.final_code[generation_slice] = pstack.final_code[par_ind]
         # Set filter code to fill it in "set_xdepth_code()""
         pstack.filter_code[generation_slice] = FilterCode.XD_DECAY_OFF.value
         self._set_xdepth_decay(pstack)
@@ -152,21 +153,18 @@ class DecayDriver:
         parents = self._pythia.event.parents()[:,0]          
         first_generation_slice = self._fill_xdepth_for_decay_chain(decay_stack, parents, len(pstack))
         
-        # Decay products
-        decay_products.clear()        
-        decay_products.append(decay_stack[first_generation_slice])
+        # Decay products    
+        decay_products.refill(decay_stack[first_generation_slice])
         
         # Not decayed initial particles
         final_status = self._pythia.event.status() == 1
         is_stable = np.where(final_status[gen0_slice])[0]
-        stable_particles.clear()
-        stable_particles.append(decay_stack[is_stable])
+        stable_particles.refill(decay_stack[is_stable])
         
         # Decayed initial particles
         decayed_status = self._pythia.event.status() == 2
         is_decayed = np.where(decayed_status[gen0_slice])[0]
-        decayed_particles.clear()
-        decayed_particles.append(decay_stack[is_decayed])
+        decayed_particles.refill(decay_stack[is_decayed])
         number_of_decays = len(is_decayed)
         
         return number_of_decays
