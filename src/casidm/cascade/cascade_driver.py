@@ -399,10 +399,7 @@ class CascadeDriver:
             is_not_mceq = np.logical_not(np.isin(wstack.pid, self.pdg_lists.mceq_particles))
             self.final_decay_stack.append(wstack[is_not_mceq])
             self.final_stack.append(self.rejection_stack)
-        
-    def get_decaying_particles(self):
-        return self.decay_stack
-    
+            
     def get_final_particles(self):
         return self.final_stack        
     

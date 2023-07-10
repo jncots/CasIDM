@@ -85,26 +85,7 @@ class DecayDriver:
         parent_indices[-1] = -1
         
         
-        parent_gen = np.copy(parent_indices)
-        # It is assumed that no more than 100 generations in the decay chain
-        # for _ in range(100):
-        #     # Take elements with indicies smaller than the length of 0th generation
-        #     # and filter out elements which point to "no parent"    
-        #     generation_slice = np.where((parent_gen < zero_generation_length) & (parent_gen > -1))[0]
-        #     print(f"GEN_SLICE = {generation_slice}")
-        #     # generation_slice contains elements for current generation (starting with 1st generation)
-        #     # parent_indices[generation_slice] are corresponding indicies of parents
-        #     pstack.xdepth[generation_slice] = pstack.xdepth_decay[parent_indices[generation_slice]]            
-        #     pstack.generation_num[generation_slice] = pstack.generation_num[parent_indices[generation_slice]] + 1
-        #     # Set filter code to fill it in "set_xdepth_code()""
-        #     pstack.filter_code[generation_slice] = FilterCode.XD_DECAY_OFF.value
-        #     self._set_xdepth_decay(pstack)
-        #     # parent_gen points to parents of parents ...
-        #     parent_gen = parent_indices[parent_gen]
-        #     # break of loop when next generation_slice is empty
-        #     if not len(generation_slice) > 0:
-        #         break
-        
+        parent_gen = np.copy(parent_indices)        
         # Take elements with indicies smaller than the length of 0th generation
         # and filter out elements which point to "no parent"    
         generation_slice = np.where((parent_gen < zero_generation_length) & (parent_gen > -1))[0]
