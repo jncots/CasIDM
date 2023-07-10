@@ -394,14 +394,5 @@ class CascadeDriver:
             self.final_stack.append(self.rejection_stack)
             
     def get_final_particles(self):
-        return self.final_stack        
-    
-
-    
-
-        
-        
-    
-    
-    
+        return self.final_stack.valid()        
     

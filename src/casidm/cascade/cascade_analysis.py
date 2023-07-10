@@ -25,7 +25,7 @@ class CascadeAnalysis:
         }
                 
         self.cascade_driver = cascade_driver        
-        self.final_particles = cascade_driver.get_final_particles().valid()
+        self.final_particles = cascade_driver.get_final_particles()
         self.pack_data()
 
 
