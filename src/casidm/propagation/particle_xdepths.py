@@ -25,21 +25,30 @@ class NextDecayXdepth:
          
     def get_xdepth(self, pstack):
         """Set xdepth_decay and filter_code for pstack[0:len(pstack)]
-        """       
-        pvalid = pstack.valid()
-        pvalid.xdepth_decay[:] = (self.decay_xdepth
-                                       .get_xdepth(pdg = pvalid.pid, 
-                                                   energy = pvalid.energy, 
-                                                   xdepth = pvalid.xdepth))
+        """ 
         
-        # If we need inf at the Earth surface
-        # pstack.xdepth_decay[np.where(pstack.xdepth_decay[pslice] >= self.max_xdepth)] = np.inf
+        if pstack.slice_idx is None:
+            # Almost always this branch is triggered
+            pvalid = pstack.valid()
+            pvalid.xdepth_decay[:] = (self.decay_xdepth
+                                        .get_xdepth(pdg = pvalid.pid, 
+                                                    energy = pvalid.energy, 
+                                                    xdepth = pvalid.xdepth))
+                    
+            if self._stop_xdepth is not None:
+                pvalid.xdepth_decay[pvalid.xdepth_decay >= self._stop_xdepth] = self._stop_xdepth
+            pvalid.filter_code[:] = FilterCode.XD_DECAY_ON.value
         
-        if self._stop_xdepth is not None:
-            pvalid.xdepth_decay[np.where(pvalid.xdepth_decay >= self._stop_xdepth)] = self._stop_xdepth
+        else:
+            # This is for decay driver specifically
+           
+            pstack.xdepth_decay[pstack.slice_idx] = (self.decay_xdepth
+                                        .get_xdepth(pdg = pstack.pid[pstack.slice_idx], 
+                                                    energy = pstack.energy[pstack.slice_idx], 
+                                                    xdepth = pstack.xdepth[pstack.slice_idx])) 
+
+            pstack.filter_code[pstack.slice_idx] = FilterCode.XD_DECAY_ON.value
             
-        
-        pstack.filter_code[:] = FilterCode.XD_DECAY_ON.value
         
 class NextInterXdepth:
     def __init__(self, *, xdepth_on_table):        

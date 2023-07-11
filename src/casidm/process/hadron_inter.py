@@ -53,7 +53,7 @@ class HadronInteraction:
             # `Particle` package which is 
             # used for initialization)
             # This is requires copy which slightly reduce speed
-            event = event[self.pmap.valid_pdg_indices(event.pid)]
+            # event = event[self.pmap.valid_pdg_indices(event.pid)]
 
             
             children.push(pid = event.pid, 

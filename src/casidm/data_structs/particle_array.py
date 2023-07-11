@@ -32,7 +32,8 @@ class ParticleArray:
                        "parent_id"]
 
     def __init__(self, size=1000):
-
+        # slice_idx stores advanced indexing array
+        self.slice_idx = None
         # Allocate memory
         if size is not None:
             self._allocate(size)
@@ -73,7 +74,7 @@ class ParticleArray:
             new_value[0:old_size] = self_value
             setattr(self, attr, new_value)
         new_array = self    
-        gc.collect()
+        # gc.collect()
         
     def _adjust_capacity(self, size):
         factor = int(np.ceil(size/self.reserved_size()))

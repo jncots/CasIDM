@@ -57,13 +57,16 @@ class DecayDriver:
         Args:
             pstack (ParticleArray): array of particle which need to set xdepth_decay
         """
-        slice_to_fill = np.where(pstack.valid().filter_code != FilterCode.XD_DECAY_ON.value)[0]
+        slice_to_fill = np.where(pstack.filter_code != FilterCode.XD_DECAY_ON.value)[0]
         # stack_to_fill is a copy, because of advanced indexing in numpy
         
         # print(f"slice_to_fill = {slice_to_fill}")
-        stack_to_fill = pstack[slice_to_fill]
-        self._xdepth_getter.get_decay_xdepth(stack_to_fill)
-        pstack[slice_to_fill] = stack_to_fill
+        pstack.slice_idx = slice_to_fill 
+        self._xdepth_getter.get_decay_xdepth(pstack)
+        pstack.slice_idx = None
+        # stack_to_fill = pstack[slice_to_fill]
+        # self._xdepth_getter.get_decay_xdepth(stack_to_fill)
+        # pstack[slice_to_fill] = stack_to_fill
     
     
     def _fill_xdepth_for_decay_chain(self, pstack, parents, zero_generation_length):
@@ -105,9 +108,8 @@ class DecayDriver:
         parent_gen = parent_indices[parent_gen]
         
         return generation_slice
-
+    
             
-        
     def run_decay(self, pstack, decay_products, decayed_particles, stable_particles):
         """Run decay of particle in pstack
                 
@@ -119,31 +121,18 @@ class DecayDriver:
             pstack (ParticleArray): stack with decaying particles
         """
         
+        pstack = pstack.valid()
         # Set xdepth_decay for particles which doesn't have it
         self._set_xdepth_decay(pstack)   
         # Fill the Pythia stack of particles that should decay
-        self._pythia.event.reset()
-        for ip in range(len(pstack)):
-            m0 = self._pythia.particleData.findParticle(pstack.pid[ip]).m0
-            self._pythia.event.append(
-                pstack.pid[ip],
-                91,
-                0,
-                0,
-                0,
-                0,
-                np.sqrt((pstack.energy[ip] + m0) * (pstack.energy[ip] - m0)),  # pz
-                pstack.energy[ip],
-                m0,
-            )
-
+        self._pythia.refill_decay_stack(pstack.pid, pstack.energy)
         # Decay it
         self._pythia.forceHadronLevel()
                 
         # Set 0th generation
         decay_stack = ParticleArray(self._pythia.event.size)
         gen0_slice = slice(0, len(pstack))
-        decay_stack[gen0_slice] = pstack.valid()
+        decay_stack[gen0_slice] = pstack
         
         # Get pid and energy from Pythia
         decay_stack.pid = self._pythia.event.pid()

@@ -123,58 +123,105 @@ class CascadeDriver:
     def run(self, nshowers = 1):
         with suppress_std_streams(suppress_stderr=False):
             for _ in tqdm(range(nshowers), total = nshowers):
-                self.run_once()
-    
-    def run_once(self):
-        
-        self.working_stack.clear()
-        self.decay_stack.clear()
+                self.working_stack.clear()
+                self.decay_stack.clear()
+                        
+                if self.initial_run:
+                    self.final_stack.clear()
+                    self.final_decay_stack.clear()
+                    self.archival_stack.clear()
+                    self.number_of_decays = 0
+                    self.number_of_interactions = 0
+                    self.loop_execution_time = 0
+                    self.runs_number = 0
+                    
+                    if self.accumulate_runs:
+                        self.initial_run = False  
+                    
                 
-        if self.initial_run:
-            self.final_stack.clear()
-            self.final_decay_stack.clear()
-            self.archival_stack.clear()
-            self.number_of_decays = 0
-            self.number_of_interactions = 0
-            self.loop_execution_time = 0
-            self.runs_number = 0
+                self.working_stack.push(pid = self.initial_pdg, 
+                                energy = self.initial_energy, 
+                                xdepth = self.initial_xdepth,
+                                generation_num = 0)
+                
+                self.id_generator.generate_ids(self.working_stack.valid().id)
+                
+                iloop = 1
+                
+                
+                start_time = time.time()        
+                while len(self.working_stack) > 0:
+                    
+                    # print(f"\r{iloop} Number of inter = {self.number_of_interactions}"
+                    #       f" number of decays = {self.number_of_decays}")
+                    
+                    # print(f"{iloop} Working stack = {len(self.working_stack)}")
+                    self.filter_uncond_final()
+                    self.filter_by_threshold_energy()
+                    self.handle_below_threshold()
+                    self.handle_above_threshold()
+                    self.filter_by_slant_depth()       
+                    self.run_hadron_interactions()
+                    if len(self.working_stack) == 0:
+                        self.run_particle_decay()
+                    
+                    iloop += 1
+                
+                self.run_final_forced_decay()
+                
+                self.loop_execution_time += time.time() - start_time
+                self.runs_number += 1
+    
+    # def run_once(self):
+        
+    #     self.working_stack.clear()
+    #     self.decay_stack.clear()
+                
+    #     if self.initial_run:
+    #         self.final_stack.clear()
+    #         self.final_decay_stack.clear()
+    #         self.archival_stack.clear()
+    #         self.number_of_decays = 0
+    #         self.number_of_interactions = 0
+    #         self.loop_execution_time = 0
+    #         self.runs_number = 0
             
-            if self.accumulate_runs:
-                self.initial_run = False  
+    #         if self.accumulate_runs:
+    #             self.initial_run = False  
             
         
-        self.working_stack.push(pid = self.initial_pdg, 
-                         energy = self.initial_energy, 
-                         xdepth = self.initial_xdepth,
-                         generation_num = 0)
+    #     self.working_stack.push(pid = self.initial_pdg, 
+    #                      energy = self.initial_energy, 
+    #                      xdepth = self.initial_xdepth,
+    #                      generation_num = 0)
         
-        self.id_generator.generate_ids(self.working_stack.valid().id)
+    #     self.id_generator.generate_ids(self.working_stack.valid().id)
         
-        iloop = 1
+    #     iloop = 1
         
         
-        start_time = time.time()        
-        while len(self.working_stack) > 0:
+    #     start_time = time.time()        
+    #     while len(self.working_stack) > 0:
             
-            # print(f"\r{iloop} Number of inter = {self.number_of_interactions}"
-            #       f" number of decays = {self.number_of_decays}")
+    #         # print(f"\r{iloop} Number of inter = {self.number_of_interactions}"
+    #         #       f" number of decays = {self.number_of_decays}")
             
-            # print(f"{iloop} Working stack = {len(self.working_stack)}")
-            self.filter_uncond_final()
-            self.filter_by_threshold_energy()
-            self.handle_below_threshold()
-            self.handle_above_threshold()
-            self.filter_by_slant_depth()       
-            self.run_hadron_interactions()
-            if len(self.working_stack) == 0:
-                self.run_particle_decay()
+    #         # print(f"{iloop} Working stack = {len(self.working_stack)}")
+    #         self.filter_uncond_final()
+    #         self.filter_by_threshold_energy()
+    #         self.handle_below_threshold()
+    #         self.handle_above_threshold()
+    #         self.filter_by_slant_depth()       
+    #         self.run_hadron_interactions()
+    #         if len(self.working_stack) == 0:
+    #             self.run_particle_decay()
             
-            iloop += 1
+    #         iloop += 1
         
-        self.run_final_forced_decay()
+    #     self.run_final_forced_decay()
         
-        self.loop_execution_time += time.time() - start_time
-        self.runs_number += 1
+    #     self.loop_execution_time += time.time() - start_time
+    #     self.runs_number += 1
     
     
     def set_decay_at_place(self, wstack):
