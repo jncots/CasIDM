@@ -4,7 +4,7 @@ from pathlib import Path
 from casidm.data_structs.particle_array import ParticleArray, FilterCode
 from casidm.data_structs.pdg_pid_map import PdgLists
 
-chormo_path = Path(chromo.__file__).parent
+chromo_path = Path(chromo.__file__).parent
 
 
 class DecayDriver:
@@ -19,7 +19,7 @@ class DecayDriver:
         from random import randint
 
         lib = importlib.import_module(f"chromo.models._pythia8")
-        xml_path = chormo_path / "iamdata/Pythia8/xmldoc"
+        xml_path = chromo_path / "iamdata/Pythia8/xmldoc"
         self._pythia = lib.Pythia(str(xml_path), False)
         seed = randint(1, 10000000)
         self._pythia.settings.resetAll()
@@ -125,7 +125,7 @@ class DecayDriver:
         # Set xdepth_decay for particles which doesn't have it
         self._set_xdepth_decay(pstack)   
         # Fill the Pythia stack of particles that should decay
-        self._pythia.refill_decay_stack(pstack.pid, pstack.energy)
+        self._pythia.fill_event(pstack.pid, pstack.energy)
         # Decay it
         self._pythia.forceHadronLevel()
                 

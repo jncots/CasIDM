@@ -47,16 +47,16 @@ class ParticleArray:
     def _allocate(self, size):
         self.pid = np.empty(size, dtype=self._int_type)
         self.energy = np.empty(size)
-        self.xdepth = np.zeros(size)
-        self.xdepth_stop = np.zeros(size)
+        self.xdepth = np.empty(size)
+        self.xdepth_stop = np.empty(size)
         self.generation_num = np.empty(size, dtype=self._int_type)
-        self.xdepth_decay = np.zeros(size)
-        self.xdepth_inter = np.zeros(size)
+        self.xdepth_decay = np.empty(size)
+        self.xdepth_inter = np.empty(size)
         self.production_code = np.empty(size, dtype=self._int_type)
         self.final_code = np.empty(size, dtype=self._int_type)
         self.filter_code = np.empty(size, dtype=self._int_type)
-        self.id = np.zeros(size, dtype=np.int64)
-        self.parent_id = np.zeros(size, dtype=np.int64)
+        self.id = np.empty(size, dtype=np.int64)
+        self.parent_id = np.empty(size, dtype=np.int64)
         self.data = self
         self._len = 0
 
@@ -93,7 +93,7 @@ class ParticleArray:
             setattr(view_stack, attr, value)
 
         view_stack._len = view_stack.pid.size
-        view_stack.data = self
+        # view_stack.data = self
         return view_stack
         
     def __setitem__(self, slice_, other):
