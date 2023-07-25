@@ -7,12 +7,32 @@ class HadronInteraction:
     def __init__(self, imodel, xdepth_getter):
         
         self.target = imodel.target
+        self.generate_targets()
         self.event_generator = imodel.event_generator
         
         # Get a global PdgPidMap object
         # ToDo use the same object as in cross section tabulation 
         self.pmap = xdepth_getter.particle_properties.pmap
     
+    def generate_targets(self):
+        precalc_num = 100000
+        components = np.array(self.target.components)
+        tot_prob = np.zeros(len(self.target.fractions) + 1)
+        tot_prob[1:] = np.cumsum(self.target.fractions)
+        self.pids = components[np.digitize(np.random.random(precalc_num), tot_prob) - 1]
+        self.pids_len = len(self.pids)
+        self.pid_counter = -1
+    
+    def get_target(self):
+        self.pid_counter += 1
+        if self.pid_counter < self.pids_len:
+            return int(self.pids[self.pid_counter])
+        else:
+            self.generate_targets()
+            self.pid_counter += 1
+            return int(self.pids[self.pid_counter])
+            
+            
     
     def run_event_generator(self, parents, children, failed_parents):
         
@@ -24,7 +44,7 @@ class HadronInteraction:
         for i in range(len(pvalid)):
             try:
                 self.event_generator.kinematics = chromo.kinematics.FixedTarget(
-                    pvalid.energy[i], int(pvalid.pid[i]), self.target
+                    pvalid.energy[i], int(pvalid.pid[i]), self.get_target()
                 )
                 
                 if (self.event_generator.kinematics.ekin <= 2e0):

@@ -1,6 +1,6 @@
 import numpy as np
 from enum import Enum
-import gc
+import math
 
 
 class FilterCode(Enum):
@@ -42,6 +42,7 @@ class ParticleArray:
             for attr in self.data_attributes:
                 setattr(self, attr, None)
             self._len = None
+            self._reserved_size = None
             self.data = None
 
     def _allocate(self, size):
@@ -58,11 +59,15 @@ class ParticleArray:
         self.id = np.empty(size, dtype=np.int64)
         self.parent_id = np.empty(size, dtype=np.int64)
         self.data = self
+        self._reserved_size = size
         self._len = 0
 
-    def _increase_size(self, factor=2):
-        old_size = self.reserved_size()
-        new_size = factor * old_size
+    def _adjust_capacity(self, size):
+        if size <= self._reserved_size:
+            return
+        
+        old_size = self._reserved_size
+        new_size = math.ceil(size/old_size) * old_size
         
         if new_size > self._max_size:
             raise MemoryError("Too large array")
@@ -73,13 +78,8 @@ class ParticleArray:
             new_value = getattr(new_array, attr)
             new_value[0:old_size] = self_value
             setattr(self, attr, new_value)
-        new_array = self    
-        # gc.collect()
+        self._reserved_size = new_size
         
-    def _adjust_capacity(self, size):
-        factor = int(np.ceil(size/self.reserved_size()))
-        if factor > 1:
-            self._increase_size(factor)
         
 
     def __len__(self):
@@ -110,13 +110,11 @@ class ParticleArray:
             self_value = getattr(self, attr)
             self_value[slice_] = other_value
         
-        
-        
-
-    def reserved_size(self):
-        return len(self.pid)
 
     def push(self, **kwargs):
+        
+        if self._reserved_size is None:
+            raise ValueError("A view cannot be extended")
 
         pid = kwargs.get("pid")
         if pid is None:
@@ -171,7 +169,7 @@ class ParticleArray:
 
     def copy(self, *, src_slice=None, dst_slice=None, size=None):
         if size is None:
-            copy_stack = ParticleArray(self.reserved_size())
+            copy_stack = ParticleArray(self._reserved_size)
         else:
             copy_stack = ParticleArray(size)
 
@@ -272,7 +270,7 @@ if __name__ == "__main__":
         """Test __setitem__ function of ParticleArray
         """
         
-        pstack1 = ParticleArray(10)
+        pstack1 = ParticleArray(1)
         pstack1.push(pid = np.array([888, 342, 777]), energy = 20, xdepth = 13)
         
         some_slice = [0, 2]
@@ -283,14 +281,14 @@ if __name__ == "__main__":
         pstack2.pid[0] = 3333
         pstack2.pid[1] = 5555
         pstack2.energy[1] = 77
-        pstack2.push(pid = 999, energy = 888, xdepth = 0)
+        # pstack2.push(pid = 999, energy = 888, xdepth = 0)
         print(f"pstack1.pid = {pstack1.pid}")
         print(f"pstack1.energy = {pstack1.energy}")
         print(f"pstack2.pid = {pstack2.pid}")
         print(f"pstack2.energy = {pstack2.energy}")
         print(f"pstack2.valid().pid = {pstack2.valid().pid}")
         print(f"len(pstack2) = {len(pstack2)}")
-        pstack1[some_slice + [6]] = pstack2.valid()
+        # pstack1[some_slice + [6]] = pstack2.valid()
         print(f"pstack1.pid = {pstack1.pid}")
         print(f"pstack1.energy = {pstack1.energy}")
         
