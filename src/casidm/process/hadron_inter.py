@@ -75,13 +75,18 @@ class HadronInteraction:
             # This is requires copy which slightly reduce speed
             # event = event[self.pmap.valid_pdg_indices(event.pid)]
 
+
+            p1 = children._len
+            p2 = p1 + len(event.pid)
+            children._adjust_capacity(p2)
             
-            children.push(pid = event.pid, 
-                            energy = event.en, 
-                            xdepth = pvalid.xdepth_inter[i],
-                            generation_num = generation_num,
-                            parent_id = pvalid.id[i],
-                            production_code = 777)
+            children.pid[p1:p2] = event.pid
+            children.energy[p1:p2] = event.en
+            children.xdepth[p1:p2] = pvalid.xdepth_inter[i]
+            children.generation_num[p1:p2] = generation_num
+            children.parent_id[p1:p2] = pvalid.id[i]
+            children.production_code[p1:p2] = 777
+            children._len = p2
             
         failed_parents.refill(pvalid[np.where(pvalid.production_code > 0)])
         
