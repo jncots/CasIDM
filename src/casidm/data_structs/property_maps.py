@@ -161,10 +161,10 @@ def mass_dict():
     """Returns mass in GeV"""
     masses = dict()
     for p in particle.Particle.findall():
-        if p.mass is None:
-            mass = 0.0
-        
-        mass = p.mass*1e-3
+        mass = p.mass
+        if mass is None:
+            mass = 0.0   
+        mass = mass*1e-3
         masses[int(p.pdgid)] = mass
     return masses
 
@@ -207,7 +207,7 @@ class TabulatedProp:
         self.mass = PropertyMap(mass_dict())
         self.ctau = PropertyMap(ctau_dict())
     
-
+tab_pprop = TabulatedProp()
 
 if __name__ == "__main__": 
     # mass = PropertyMap(get_mass_dict(), False)

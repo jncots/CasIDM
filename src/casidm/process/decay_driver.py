@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 from casidm.data_structs.particle_array import ParticleArray, FilterCode
 from casidm.data_structs.pdg_pid_map import PdgLists
+from casidm.data_structs.property_maps import tab_pprop
 
 chromo_path = Path(chromo.__file__).parent
 
@@ -125,7 +126,17 @@ class DecayDriver:
         # Set xdepth_decay for particles which doesn't have it
         self._set_xdepth_decay(pstack)   
         # Fill the Pythia stack of particles that should decay
-        self._pythia.fill_event(pstack.pid, pstack.energy)
+        
+        pxy = np.zeros_like(pstack.energy)
+        mass = tab_pprop.mass[pstack.pid]
+        pz = np.sqrt((pstack.energy - mass)*(pstack.energy + mass))
+        self._pythia.event.fill(pstack.pid, 
+                                np.full_like(pstack.pid, 91),
+                                pxy,
+                                pxy,
+                                pz,
+                                pstack.energy,
+                                mass)
         # Decay it
         self._pythia.forceHadronLevel()
                 

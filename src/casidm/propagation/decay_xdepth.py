@@ -10,6 +10,7 @@ from casidm.data_structs.particle_array import ParticleArray
 # from casdata_structs.particle_array import ParticleArray
 from casidm.propagation.tab_pproperties import TabulatedParticleProperties
 from casidm.propagation.slant_depth.xdepth_on_table import XdepthOnTable
+from casidm.data_structs.property_maps import tab_pprop
 import numpy as np
 
 
@@ -18,12 +19,13 @@ class DecayXdepth:
                  tab_particle_properties = TabulatedParticleProperties(),
                  xdepth_on_table = XdepthOnTable()):
         self.pp_tab = tab_particle_properties
+        self.tab_pprop = tab_pprop
         self.xd_tab = xdepth_on_table
 
     def get_xdepth(self, pdg, energy, xdepth):
         
-        # Check if particle doesn't decay
-        ctau = self.pp_tab.ctau(pdg)        
+        # Check if particle doesn't decay      
+        ctau = self.tab_pprop.ctau[pdg]      
         is_inf = ctau == np.inf
         inf_flag = is_inf.any()
         
@@ -38,9 +40,8 @@ class DecayXdepth:
             pdg = pdg[not_inf]
             energy = energy[not_inf]
             xdepth = xdepth[not_inf]
-            
-            
-        mass = self.pp_tab.mass(pdg)
+        
+        mass = self.tab_pprop.mass[pdg]
         gamma = energy/mass
         bgamma = np.sqrt((gamma + 1) * (gamma - 1))
         rnd = -np.log(1 - np.random.rand(len(pdg)))
